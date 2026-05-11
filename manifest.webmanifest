@@ -1,0 +1,19 @@
+{
+  "name": "喘息服務時段排班",
+  "short_name": "喘息排班",
+  "description": "可線上使用的喘息與短照服務時段排班工具，支援查班表與複製申請文字。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff4df",
+  "theme_color": "#4f8f6b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

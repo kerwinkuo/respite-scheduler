@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#4f8f6b">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>喘息服務時段排班</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #fffaf0;
+      --canvas: #fff3e5;
+      --ink: #332d25;
+      --muted: #776d61;
+      --line: #ead8bd;
+      --leaf: #4f8f6b;
+      --leaf-soft: #e1f1e4;
+      --peach: #e8795f;
+      --peach-soft: #ffe2d8;
+      --sky: #dff0f7;
+      --sun: #ffe6a3;
+      --white: #fffdf8;
+      --shadow: 0 18px 42px rgba(96, 71, 35, 0.14);
+      --radius: 8px;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        linear-gradient(130deg, rgba(255, 230, 163, 0.54), transparent 28rem),
+        linear-gradient(320deg, rgba(223, 240, 247, 0.68), transparent 30rem),
+        var(--canvas);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      min-height: 44px;
+      border: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      color: var(--ink);
+      outline: 0;
+    }
+
+    input,
+    select {
+      padding: 0 12px;
+    }
+
+    textarea {
+      min-height: 220px;
+      padding: 12px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--leaf);
+      box-shadow: 0 0 0 3px rgba(79, 143, 107, 0.14);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    .app {
+      width: min(100%, 1120px);
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px;
+      border: 1px solid rgba(119, 109, 97, 0.16);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.97), rgba(255, 253, 248, 0.78)),
+        radial-gradient(circle at 90% 18%, rgba(232, 121, 95, 0.18), transparent 32%);
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      font-size: clamp(1.5rem, 2.8vw, 2.35rem);
+      line-height: 1.15;
+      font-weight: 950;
+    }
+
+    .hero p {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .hero-mark {
+      width: 80px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(from 210deg, var(--leaf-soft), var(--sun), var(--peach-soft), var(--sky), var(--leaf-soft));
+      color: #315d45;
+      font-size: 2.1rem;
+      font-weight: 950;
+      box-shadow: inset 0 0 0 9px rgba(255, 253, 248, 0.76);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      padding: 14px;
+      border: 1px solid rgba(119, 109, 97, 0.15);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.82);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 0.76rem;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      font-size: 1.5rem;
+      font-weight: 950;
+      color: var(--leaf);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .panel {
+      padding: 16px;
+      border: 1px solid rgba(119, 109, 97, 0.15);
+      border-radius: var(--radius);
+      background: rgba(255, 250, 240, 0.88);
+    }
+
+    .panel + .panel {
+      margin-top: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .panel h2 {
+      font-size: 1.08rem;
+      line-height: 1.35;
+      font-weight: 950;
+    }
+
+    .hint {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+
+    .date-row,
+    .time-row,
+    .actions-row,
+    .lookup-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .date-row {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: end;
+    }
+
+    .time-row {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      align-items: end;
+      margin-top: 12px;
+    }
+
+    .actions-row {
+      grid-template-columns: 1fr auto;
+      margin-top: 12px;
+    }
+
+    .lookup-row {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .btn {
+      border-radius: var(--radius);
+      padding: 0 14px;
+      font-weight: 950;
+      transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+    }
+
+    .btn:active,
+    .hour-btn:active,
+    .icon-btn:active {
+      transform: scale(0.98);
+    }
+
+    .primary {
+      background: var(--leaf);
+      color: var(--white);
+      box-shadow: 0 10px 24px rgba(79, 143, 107, 0.22);
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--ink);
+    }
+
+    .danger {
+      border: 1px solid rgba(232, 121, 95, 0.42);
+      background: var(--peach-soft);
+      color: #813626;
+    }
+
+    .hour-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .hour-btn {
+      min-height: 50px;
+      padding: 7px 5px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      color: var(--ink);
+      font-weight: 950;
+      line-height: 1.2;
+    }
+
+    .hour-btn[aria-pressed="true"] {
+      border-color: var(--leaf);
+      background: var(--leaf-soft);
+      color: #315d45;
+    }
+
+    .hour-btn small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .schedule-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      min-height: 190px;
+      border: 1px dashed rgba(119, 109, 97, 0.28);
+      border-radius: var(--radius);
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.55;
+      background: rgba(255, 253, 248, 0.56);
+    }
+
+    .date-group {
+      border: 1px solid rgba(119, 109, 97, 0.15);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.72);
+      overflow: hidden;
+    }
+
+    .date-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(223, 240, 247, 0.64);
+      font-weight: 950;
+    }
+
+    .date-title span:last-child {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+
+    .schedule-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-top: 1px solid rgba(119, 109, 97, 0.12);
+    }
+
+    .unit-pill {
+      justify-self: start;
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: var(--sun);
+      color: #6b5520;
+      font-size: 0.82rem;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .icon-btn {
+      width: 44px;
+      min-width: 44px;
+      padding: 0;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--ink);
+      font-size: 1.2rem;
+      font-weight: 950;
+    }
+
+    .output-box {
+      display: grid;
+      gap: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 20;
+      width: min(calc(100% - 28px), 460px);
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: #332d25;
+      color: var(--white);
+      text-align: center;
+      font-weight: 950;
+      opacity: 0;
+      transform: translate(-50%, 16px);
+      transition: opacity 160ms ease, transform 160ms ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 880px) {
+      .hero,
+      .layout,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-mark {
+        display: none;
+      }
+
+      .layout {
+        gap: 12px;
+      }
+
+      .hour-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .app {
+        padding: 10px 10px 20px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .date-row,
+      .time-row,
+      .actions-row,
+      .lookup-row {
+        grid-template-columns: 1fr;
+      }
+
+      .schedule-item {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .schedule-item .unit-pill {
+        justify-self: stretch;
+        text-align: center;
+      }
+
+      .schedule-item .icon-btn {
+        justify-self: end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <h1>喘息服務時段排班</h1>
+        <p>直接挑日期與小時，也可以用開始、結束時間微調。日期清單改成分日顯示，產出的申請文字不會擠成一整排。</p>
+      </div>
+      <div class="hero-mark" aria-hidden="true">時</div>
+    </header>
+
+    <section class="stats" aria-label="排班統計">
+      <div class="stat">
+        <strong>已排時段</strong>
+        <span id="totalCount">0</span>
+      </div>
+      <div class="stat">
+        <strong>總時數</strong>
+        <span><span id="totalHours">0</span> hr</span>
+      </div>
+      <div class="stat">
+        <strong>總單位</strong>
+        <span id="totalUnits">0</span>
+      </div>
+    </section>
+
+    <div class="layout">
+      <div>
+        <section class="panel" aria-labelledby="basicTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="basicTitle">基本資料</h2>
+              <p class="hint">這些資料會一起放進申請文字。</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="caseName">個案姓名</label>
+              <input id="caseName" type="text" value="張阿珍" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="serviceType">服務類型</label>
+              <select id="serviceType">
+                <option>喘息</option>
+                <option>短照</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="provider">指定單位</label>
+              <input id="provider" type="text" value="樂安家" autocomplete="off">
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="pickTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="pickTitle">挑日期與時間</h2>
+              <p class="hint">上方選日期，下方每一格是一個小時；需要半小時或 1.5 小時就用自訂時間。</p>
+            </div>
+          </div>
+
+          <div class="date-row">
+            <div class="field">
+              <label for="serviceDate">服務日期</label>
+              <input id="serviceDate" type="date">
+            </div>
+            <button class="btn secondary" type="button" data-date-offset="0">今天</button>
+            <button class="btn secondary" type="button" data-date-offset="1">明天</button>
+          </div>
+
+          <div id="hourGrid" class="hour-grid" aria-label="每小時時段"></div>
+
+          <div class="time-row">
+            <div class="field">
+              <label for="startTime">開始時間</label>
+              <input id="startTime" type="time" min="06:00" max="21:00" step="900" value="08:00">
+            </div>
+            <div class="field">
+              <label for="endTime">結束時間</label>
+              <input id="endTime" type="time" min="06:00" max="21:00" step="900" value="09:00">
+            </div>
+            <button id="addCustom" class="btn primary" type="button">加入時段</button>
+          </div>
+        </section>
+      </div>
+
+      <aside>
+        <section class="panel" aria-labelledby="listTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="listTitle">已選時段</h2>
+              <p class="hint">可直接改每筆的開始與結束時間。</p>
+            </div>
+            <button id="clearAll" class="btn danger" type="button">清空</button>
+          </div>
+          <div class="lookup-row">
+            <div class="field">
+              <label for="lookupDate">查班表日期</label>
+              <input id="lookupDate" type="date">
+            </div>
+            <button id="lookupToday" class="btn secondary" type="button">查今天</button>
+            <button id="showAllSchedules" class="btn secondary" type="button">看全部</button>
+          </div>
+          <div id="scheduleList" class="schedule-list"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="outputTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="outputTitle">申請文字</h2>
+              <p class="hint">日期一行、時段縮排，複製後比較好讀。</p>
+            </div>
+          </div>
+          <div class="output-box">
+            <button id="generateText" class="btn primary" type="button">產生申請文字</button>
+            <textarea id="outputText" readonly placeholder="產生後會顯示在這裡"></textarea>
+            <button id="copyText" class="btn secondary" type="button">複製文字</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="scheduler-core.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      const core = window.SchedulerCore;
+      const storageKey = "respiteScheduler.v1";
+      const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+      const els = {
+        caseName: document.querySelector("#caseName"),
+        serviceType: document.querySelector("#serviceType"),
+        provider: document.querySelector("#provider"),
+        serviceDate: document.querySelector("#serviceDate"),
+        startTime: document.querySelector("#startTime"),
+        endTime: document.querySelector("#endTime"),
+        lookupDate: document.querySelector("#lookupDate"),
+        lookupToday: document.querySelector("#lookupToday"),
+        showAllSchedules: document.querySelector("#showAllSchedules"),
+        addCustom: document.querySelector("#addCustom"),
+        hourGrid: document.querySelector("#hourGrid"),
+        scheduleList: document.querySelector("#scheduleList"),
+        totalCount: document.querySelector("#totalCount"),
+        totalHours: document.querySelector("#totalHours"),
+        totalUnits: document.querySelector("#totalUnits"),
+        clearAll: document.querySelector("#clearAll"),
+        generateText: document.querySelector("#generateText"),
+        outputText: document.querySelector("#outputText"),
+        copyText: document.querySelector("#copyText"),
+        toast: document.querySelector("#toast"),
+      };
+
+      let schedules = loadSchedules();
+      let lookupDate = "";
+
+      function todayValue(offset) {
+        const date = new Date();
+        date.setDate(date.getDate() + Number(offset || 0));
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+      }
+
+      function weekdayFor(dateValue) {
+        return weekdays[new Date(`${dateValue}T00:00:00`).getDay()];
+      }
+
+      function makeId() {
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function loadSchedules() {
+        try {
+          return JSON.parse(localStorage.getItem(storageKey)) || [];
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveSchedules() {
+        localStorage.setItem(storageKey, JSON.stringify(schedules));
+      }
+
+      function showToast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 1800);
+      }
+
+      function selectedDate() {
+        return els.serviceDate.value || todayValue();
+      }
+
+      function addSchedule(date, start, end) {
+        try {
+          core.calculateDurationHours(start, end);
+        } catch (error) {
+          showToast(error.message);
+          return false;
+        }
+
+        const exists = schedules.some((item) => (
+          item.date === date && item.start === start && item.end === end
+        ));
+        if (exists) {
+          showToast("這個時段已經加入");
+          return false;
+        }
+
+        schedules.push({
+          id: makeId(),
+          date,
+          weekday: weekdayFor(date),
+          start,
+          end,
+        });
+        schedules = core.sortSchedules(schedules);
+        saveSchedules();
+        render();
+        return true;
+      }
+
+      function toggleHourlySegment(segment) {
+        const range = core.segmentToRange(segment);
+        const date = selectedDate();
+        const existing = schedules.find((item) => (
+          item.date === date && item.start === range.start && item.end === range.end
+        ));
+
+        if (existing) {
+          schedules = schedules.filter((item) => item.id !== existing.id);
+          saveSchedules();
+          render();
+          return;
+        }
+
+        addSchedule(date, range.start, range.end);
+      }
+
+      function updateSchedule(id, field, value) {
+        const next = schedules.map((item) => (
+          item.id === id ? { ...item, [field]: value } : item
+        ));
+        const changed = next.find((item) => item.id === id);
+
+        try {
+          core.calculateDurationHours(changed.start, changed.end);
+        } catch (error) {
+          showToast(error.message);
+          render();
+          return;
+        }
+
+        schedules = core.sortSchedules(next);
+        saveSchedules();
+        render();
+      }
+
+      function removeSchedule(id) {
+        schedules = schedules.filter((item) => item.id !== id);
+        saveSchedules();
+        render();
+      }
+
+      function clearAll() {
+        if (schedules.length === 0) return;
+        if (!confirm("確定要清空所有已選時段嗎？")) return;
+        schedules = [];
+        saveSchedules();
+        els.outputText.value = "";
+        render();
+      }
+
+      function renderHourGrid() {
+        const date = selectedDate();
+        const segments = core.createHourlySegments(6, 21);
+        els.hourGrid.innerHTML = segments.map((segment) => {
+          const range = core.segmentToRange(segment);
+          const selected = schedules.some((item) => (
+            item.date === date && item.start === range.start && item.end === range.end
+          ));
+          return `
+            <button class="hour-btn" type="button" data-hour="${segment}" aria-pressed="${selected}">
+              ${range.start}<small>${range.end}</small>
+            </button>
+          `;
+        }).join("");
+      }
+
+      function renderSummary() {
+        const summary = core.summarizeSchedules(schedules);
+        const hours = core.formatDuration(summary.hours);
+        els.totalCount.textContent = summary.count;
+        els.totalHours.textContent = hours;
+        els.totalUnits.textContent = hours;
+      }
+
+      function renderScheduleList() {
+        const visibleSchedules = core.filterSchedulesByDate(schedules, lookupDate);
+
+        if (schedules.length === 0) {
+          els.scheduleList.innerHTML = `
+            <div class="empty">
+              <div>
+                <strong>還沒有選時段</strong><br>
+                先選日期，再點一小時格子或加入自訂時間。
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        if (visibleSchedules.length === 0) {
+          els.scheduleList.innerHTML = `
+            <div class="empty">
+              <div>
+                <strong>查無班表</strong><br>
+                這一天目前沒有已排時段。
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const groups = core.groupSchedulesByDate(visibleSchedules);
+        els.scheduleList.innerHTML = Object.values(groups).map((group) => {
+          const items = group.items.map((item) => {
+            const hours = core.calculateDurationHours(item.start, item.end);
+            return `
+              <div class="schedule-item" data-id="${item.id}">
+                <input type="time" min="06:00" max="21:00" step="900" value="${item.start}" data-field="start" aria-label="開始時間">
+                <input type="time" min="06:00" max="21:00" step="900" value="${item.end}" data-field="end" aria-label="結束時間">
+                <span class="unit-pill">${core.formatDuration(hours)}小時</span>
+                <button class="icon-btn" type="button" data-remove="${item.id}" aria-label="刪除">×</button>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div class="date-group">
+              <div class="date-title">
+                <span>${core.formatShortDate(group.date)}（${group.weekday}）</span>
+                <span>${group.items.length} 個時段</span>
+              </div>
+              ${items}
+            </div>
+          `;
+        }).join("");
+      }
+
+      function render() {
+        renderHourGrid();
+        renderSummary();
+        renderScheduleList();
+      }
+
+      function generateText() {
+        if (schedules.length === 0) {
+          showToast("請先加入至少一個時段");
+          return;
+        }
+
+        els.outputText.value = core.buildApplicationText({
+          caseName: els.caseName.value.trim(),
+          serviceType: els.serviceType.value,
+          provider: els.provider.value.trim(),
+          schedules,
+        });
+      }
+
+      function copyText() {
+        const text = els.outputText.value.trim();
+        if (!text) {
+          showToast("請先產生申請文字");
+          return;
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text)
+            .then(() => showToast("已複製"))
+            .catch(copyByTextarea);
+          return;
+        }
+
+        copyByTextarea();
+
+        function copyByTextarea() {
+          els.outputText.select();
+          const copied = document.execCommand("copy");
+          window.getSelection().removeAllRanges();
+          showToast(copied ? "已複製" : "請手動複製文字");
+        }
+      }
+
+      document.querySelectorAll("[data-date-offset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          els.serviceDate.value = todayValue(button.dataset.dateOffset);
+          renderHourGrid();
+        });
+      });
+
+      els.serviceDate.addEventListener("change", renderHourGrid);
+      els.lookupDate.addEventListener("change", () => {
+        lookupDate = els.lookupDate.value;
+        renderScheduleList();
+      });
+      els.lookupToday.addEventListener("click", () => {
+        lookupDate = todayValue();
+        els.lookupDate.value = lookupDate;
+        renderScheduleList();
+      });
+      els.showAllSchedules.addEventListener("click", () => {
+        lookupDate = "";
+        els.lookupDate.value = "";
+        renderScheduleList();
+      });
+      els.addCustom.addEventListener("click", () => {
+        addSchedule(selectedDate(), els.startTime.value, els.endTime.value);
+      });
+      els.hourGrid.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-hour]");
+        if (!button) return;
+        toggleHourlySegment(button.dataset.hour);
+      });
+      els.scheduleList.addEventListener("change", (event) => {
+        const input = event.target.closest("[data-field]");
+        if (!input) return;
+        const item = input.closest("[data-id]");
+        updateSchedule(item.dataset.id, input.dataset.field, input.value);
+      });
+      els.scheduleList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-remove]");
+        if (!button) return;
+        removeSchedule(button.dataset.remove);
+      });
+      els.clearAll.addEventListener("click", clearAll);
+      els.generateText.addEventListener("click", generateText);
+      els.copyText.addEventListener("click", copyText);
+
+      els.serviceDate.value = todayValue();
+      render();
+
+      if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      }
+    })();
+  </script>
+</body>
+</html>
