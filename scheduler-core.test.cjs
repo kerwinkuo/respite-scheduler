@@ -44,10 +44,28 @@ test("rejects time ranges that end before they start", () => {
   );
 });
 
-test("calculates units with two hours as one unit", () => {
+test("calculates units with two hours as one unit and one unit minimum", () => {
   assert.equal(calculateUnits(2), 1);
-  assert.equal(calculateUnits(1), 0.5);
+  assert.equal(calculateUnits(1), 1);
+  assert.equal(calculateUnits(0.5), 1);
   assert.equal(formatDuration(calculateUnits(2.5)), "1.25");
+});
+
+test("adds the one-unit minimum per service segment", () => {
+  const text = buildApplicationText({
+    caseName: "張阿珍",
+    serviceType: "短照",
+    provider: "樂安家",
+    schedules: [
+      { date: "2026-05-11", weekday: "一", start: "08:00", end: "09:00" },
+      { date: "2026-05-11", weekday: "一", start: "10:00", end: "11:00" },
+    ],
+  });
+
+  assert.match(text, /合計：2小時 \/ 2單位/);
+  assert.match(text, /新增申請：08:00-09:00（1小時，1單位）/);
+  assert.match(text, /新增申請：10:00-11:00（1小時，1單位）/);
+  assert.doesNotMatch(text, /0\.5單位/);
 });
 
 test("describes adjustments from an already requested time range", () => {
@@ -73,10 +91,10 @@ test("builds a readable request with one date per line instead of packed dates",
     ],
   });
 
-  assert.match(text, /單位換算：2小時 = 1單位/);
-  assert.match(text, /合計：3\.5小時 \/ 1\.75單位/);
+  assert.match(text, /單位換算：2小時 = 1單位，不足2小時以1單位計算/);
+  assert.match(text, /合計：3\.5小時 \/ 2單位/);
   assert.match(text, /05\/11 \(一\)\n\s+新增申請：08:00-10:00/);
-  assert.match(text, /05\/12 \(二\)\n\s+新增申請：09:30-11:00/);
+  assert.match(text, /05\/12 \(二\)\n\s+新增申請：09:30-11:00（1\.5小時，1單位）/);
   assert.doesNotMatch(text, /05\/11.*05\/12/);
 });
 

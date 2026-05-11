@@ -1,4 +1,4 @@
-﻿const cacheName = "respite-scheduler-v2";
+const cacheName = "respite-scheduler-v3";
 const appShell = [
   "./",
   "./index.html",

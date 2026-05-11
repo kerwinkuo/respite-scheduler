@@ -56,7 +56,11 @@
   }
 
   function calculateUnits(hours) {
-    return Number(hours) / unitHours;
+    const value = Number(hours);
+    if (!Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+    return Math.max(1, value / unitHours);
   }
 
   function segmentToRange(segment) {
@@ -189,7 +193,7 @@
       `申請：${options.serviceType || "喘息"}`,
       `個案：${options.caseName || ""}`,
       `指定單位：${options.provider || ""}`,
-      "單位換算：2小時 = 1單位",
+      "單位換算：2小時 = 1單位，不足2小時以1單位計算",
       `合計：${formatDuration(summary.hours)}小時 / ${formatDuration(summary.units)}單位`,
       "",
       "服務時段：",
