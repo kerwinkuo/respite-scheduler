@@ -1,4 +1,4 @@
-const cacheName = "respite-scheduler-v1";
+﻿const cacheName = "respite-scheduler-v2";
 const appShell = [
   "./",
   "./index.html",
@@ -32,3 +32,4 @@ self.addEventListener("fetch", event => {
     ))
   );
 });
+
