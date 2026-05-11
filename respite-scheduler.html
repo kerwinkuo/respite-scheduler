@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
@@ -361,7 +361,7 @@
 
     .schedule-item {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 8px;
       align-items: center;
       padding: 10px 12px;
@@ -379,6 +379,32 @@
       white-space: nowrap;
     }
 
+
+    .adjust-toggle {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 950;
+    }
+
+    .adjust-toggle input {
+      width: auto;
+      min-height: 0;
+    }
+
+    .adjust-fields {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .adjust-fields[hidden] {
+      display: none;
+    }
     .icon-btn {
       width: 44px;
       min-width: 44px;
@@ -527,7 +553,7 @@
           <div class="panel-head">
             <div>
               <h2 id="pickTitle">挑日期與時間</h2>
-              <p class="hint">上方選日期，下方每一格是一個小時；需要半小時或 1.5 小時就用自訂時間。</p>
+              <p class="hint">上方選日期，下方每一格是一個小時；需要微調分鐘就用自訂時間，單位依 2 小時 = 1 單位換算。</p>
             </div>
           </div>
 
@@ -545,11 +571,11 @@
           <div class="time-row">
             <div class="field">
               <label for="startTime">開始時間</label>
-              <input id="startTime" type="time" min="06:00" max="21:00" step="900" value="08:00">
+              <input id="startTime" type="time" min="06:00" max="21:00" step="300" value="08:00">
             </div>
             <div class="field">
               <label for="endTime">結束時間</label>
-              <input id="endTime" type="time" min="06:00" max="21:00" step="900" value="09:00">
+              <input id="endTime" type="time" min="06:00" max="21:00" step="300" value="09:00">
             </div>
             <button id="addCustom" class="btn primary" type="button">加入時段</button>
           </div>
@@ -714,13 +740,22 @@
       }
 
       function updateSchedule(id, field, value) {
-        const next = schedules.map((item) => (
-          item.id === id ? { ...item, [field]: value } : item
-        ));
+        const next = schedules.map((item) => {
+          if (item.id !== id) return item;
+          const updated = { ...item, [field]: value };
+          if (field === "adjustment" && value) {
+            updated.originalStart = updated.originalStart || item.start;
+            updated.originalEnd = updated.originalEnd || item.end;
+          }
+          return updated;
+        });
         const changed = next.find((item) => item.id === id);
 
         try {
           core.calculateDurationHours(changed.start, changed.end);
+          if (changed.adjustment && changed.originalStart && changed.originalEnd) {
+            core.calculateDurationHours(changed.originalStart, changed.originalEnd);
+          }
         } catch (error) {
           showToast(error.message);
           render();
@@ -765,10 +800,9 @@
 
       function renderSummary() {
         const summary = core.summarizeSchedules(schedules);
-        const hours = core.formatDuration(summary.hours);
         els.totalCount.textContent = summary.count;
-        els.totalHours.textContent = hours;
-        els.totalUnits.textContent = hours;
+        els.totalHours.textContent = core.formatDuration(summary.hours);
+        els.totalUnits.textContent = core.formatDuration(summary.units);
       }
 
       function renderScheduleList() {
@@ -802,12 +836,31 @@
         els.scheduleList.innerHTML = Object.values(groups).map((group) => {
           const items = group.items.map((item) => {
             const hours = core.calculateDurationHours(item.start, item.end);
+            const units = core.calculateUnits(hours);
+            const adjustment = item.adjustment ? "checked" : "";
+            const adjustHidden = item.adjustment ? "" : "hidden";
+            const originalStart = item.originalStart || item.start;
+            const originalEnd = item.originalEnd || item.end;
             return `
               <div class="schedule-item" data-id="${item.id}">
-                <input type="time" min="06:00" max="21:00" step="900" value="${item.start}" data-field="start" aria-label="開始時間">
-                <input type="time" min="06:00" max="21:00" step="900" value="${item.end}" data-field="end" aria-label="結束時間">
-                <span class="unit-pill">${core.formatDuration(hours)}小時</span>
+                <input type="time" min="06:00" max="21:00" step="300" value="${item.start}" data-field="start" aria-label="開始時間">
+                <input type="time" min="06:00" max="21:00" step="300" value="${item.end}" data-field="end" aria-label="結束時間">
+                <span class="unit-pill">${core.formatDuration(hours)}小時 / ${core.formatDuration(units)}單位</span>
                 <button class="icon-btn" type="button" data-remove="${item.id}" aria-label="刪除">×</button>
+                <label class="adjust-toggle">
+                  <input type="checkbox" data-field="adjustment" ${adjustment}>
+                  調整已申請時段
+                </label>
+                <div class="adjust-fields" ${adjustHidden}>
+                  <div class="field">
+                    <label>原申請開始</label>
+                    <input type="time" min="06:00" max="21:00" step="300" value="${originalStart}" data-field="originalStart" aria-label="原申請開始時間">
+                  </div>
+                  <div class="field">
+                    <label>原申請結束</label>
+                    <input type="time" min="06:00" max="21:00" step="300" value="${originalEnd}" data-field="originalEnd" aria-label="原申請結束時間">
+                  </div>
+                </div>
               </div>
             `;
           }).join("");
@@ -902,7 +955,8 @@
         const input = event.target.closest("[data-field]");
         if (!input) return;
         const item = input.closest("[data-id]");
-        updateSchedule(item.dataset.id, input.dataset.field, input.value);
+        const value = input.type === "checkbox" ? input.checked : input.value;
+        updateSchedule(item.dataset.id, input.dataset.field, value);
       });
       els.scheduleList.addEventListener("click", (event) => {
         const button = event.target.closest("[data-remove]");
@@ -923,3 +977,7 @@
   </script>
 </body>
 </html>
+
+
+
+
